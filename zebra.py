@@ -1,7 +1,7 @@
 from z3 import *
 
-House, houses = EnumSort("House", "red green ivory yellow blue".split())
-red_house, green_house, ivory_house, yellow_house, blue_house = houses
+House, (red_house, green_house, ivory_house, yellow_house, blue_house) = \
+    EnumSort("House", "red green ivory yellow blue".split())
 
 Nation, (england, spain, ukraine, norway, japan) = \
     EnumSort("Nation", "england spain ukraine norway japan".split())
@@ -27,60 +27,68 @@ house_number = Function("house_number", House, IntSort())
 
 h, g = Consts('h g', House)
 
+def next_to(h, g):
+    return Or(
+        house_number(h) == house_number(g) + 1,
+        house_number(h) == house_number(g) - 1,
+    )
+def Iff(a, b):
+    return a == b
+
 solver = Solver()
 solver.add(
     # 1. There are five houses.
-    ForAll(h, And(house_number(h) >= 1, house_number(h) <=5)),
+    ForAll(h, And(house_number(h) >= 1, house_number(h) <= 5)),
 
     # 2. The Englishman lives in the red house.
     nationality(red_house) == england,
 
     # 3. The Spaniard owns the dog.
-    ForAll(h, Implies(nationality(h) == spain, pet(h) == dog)),
+    ForAll(h, Iff(nationality(h) == spain, pet(h) == dog)),
 
     # 4. Coffee is drunk in the green house.
     drinks(green_house) == coffee,
 
     # 5. The Ukrainian drinks tea.
-    ForAll(h, Implies(nationality(h) == ukraine, drinks(h) == tea)),
+    ForAll(h, Iff(nationality(h) == ukraine, drinks(h) == tea)),
 
     # 6. The green house is immediately to the right of the ivory house.
     house_number(green_house) == house_number(ivory_house) + 1,
 
     # 7. The Old Gold smoker owns snails.
-    ForAll(h, Implies(smokes(h) == oldgold, pet(h) == snails)),
+    ForAll(h, Iff(smokes(h) == oldgold, pet(h) == snails)),
 
     # 8. Kools are smoked in the yellow house.
     smokes(yellow_house) == kools,
 
     # 9. Milk is drunk in the middle house.
-    ForAll(h, Implies(house_number(h) == 3, drinks(h) == milk)),
+    ForAll(h, Iff(house_number(h) == 3, drinks(h) == milk)),
 
     # 10. The Norwegian lives in the first house.
-    ForAll(h, Implies(nationality(h) == norway, house_number(h) == 1)),
+    ForAll(h, Iff(nationality(h) == norway, house_number(h) == 1)),
 
     # 11. The man who smokes Chesterfields lives in the house next to the man with the fox.
     ForAll([h, g], Implies(
         And(smokes(h) == chesterfields, pet(g) == fox),
-        Or(house_number(h) == house_number(g) + 1, house_number(h) == house_number(g) - 1)
+        next_to(h, g)
     )),
 
     # 12. Kools are smoked in the house next to the house where the horse is kept.
     ForAll([h, g], Implies(
         And(smokes(h) == kools, pet(g) == horse),
-        Or(house_number(h) == house_number(g) + 1, house_number(h) == house_number(g) - 1)
+        next_to(h, g)
     )),
 
     # 13. The Lucky Strike smoker drinks orange juice.
-    ForAll(h, Implies(smokes(h) == luckystrikes, drinks(h) == juice)),
+    ForAll(h, Iff(smokes(h) == luckystrikes, drinks(h) == juice)),
 
     # 14. The Japanese smokes Parliaments.
-    ForAll(h, Implies(nationality(h) == japan, smokes(h) == parliaments)),
+    ForAll(h, Iff(nationality(h) == japan, smokes(h) == parliaments)),
 
     # 15. The Norwegian lives next to the blue house.
     ForAll(h, Implies(
         nationality(h) == norway,
-        Or(house_number(h) == house_number(blue_house) + 1, house_number(h) == house_number(blue_house) - 1)
+        next_to(h, blue_house)
     )),
 
     # In the interest of clarity, it must be added that each of the five
@@ -123,3 +131,4 @@ print(f"which is number {model.eval(house_number(the_zebra_house))} from the lef
 print(f"is from {model.eval(nationality(the_zebra_house))},")
 print(f"smokes {model.eval(smokes(the_zebra_house))},")
 print(f"and drinks {model.eval(drinks(the_zebra_house))}.")
+
